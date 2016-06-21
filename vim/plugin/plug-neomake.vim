@@ -157,6 +157,20 @@ function! s:SetupSasslint()
 endfunction
 autocmd dkoneomake FileType scss call s:SetupSasslint()
 
+" ----------------------------------------------------------------------------
+" Maker: ternlint
+" ----------------------------------------------------------------------------
+
+function! g:MapTernlintOutput()
+  echom a:000
+endfunction
+
+let g:neomake_javascript_ternlint_maker = {
+      \   'exe':          'tern-lint',
+      \   'errorformat':  '%f:%t:%l:%c:%n:%m',
+      \   'mapexpr':      'g:MapTernlintOutput(v:val)',
+      \ }
+
 
 " ============================================================================
 " Disable makers
@@ -166,7 +180,7 @@ autocmd dkoneomake FileType scss call s:SetupSasslint()
 let g:neomake_python_enabled_makers     = []
 
 " limit to only preferred
-let g:neomake_javascript_enabled_makers = [ 'eslint', 'jscs' ]
+let g:neomake_javascript_enabled_makers = [ 'eslint', 'jscs', 'ternlint' ]
 let g:neomake_markdown_enabled_makers   = [ 'markdownlint' ]
 " I don't use real pandoc so just assume it's always markdown
 let g:neomake_pandoc_enabled_makers     = g:neomake_markdown_enabled_makers
