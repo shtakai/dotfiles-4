@@ -43,7 +43,7 @@ if !empty(s:DKO_StarSearch())
   nmap <silent><special><expr>  *   <SID>DKO_StarSearch()
 endif
 
-if exists("g:plugs['incsearch.vim']")
+if exists("g:loaded_incsearch")
   nmap  <silent><special> /   <Plug>(incsearch-forward)
   nmap  <silent><special> ?   <Plug>(incsearch-backward)
   nmap  <silent><special> g/  <Plug>(incsearch-stay)

@@ -474,19 +474,21 @@ let g:netrw_browsex_viewer = has('mac') ? 'open' : 'xdg-open'
 " This is used by plugin/completion.vim so is a g:
 let g:dko_has_completion = 0
 
+" @see https://github.com/junegunn/vim-plug/wiki/faq#conditional-activation
+" @param  {Boolean}     cond    activate only if this is true
+" @param  {Dictionary}  [opts]  activate with these additional options
+" @return {Dictionary}
+function! PlugWhen(cond, ...)
+  let opts = get(a:000, 0, {})
+  return a:cond ? opts : extend(opts, { 'on': [], 'for': [] })
+endfunction
+
+" Callback for 'do:' after update plugins that use neovim remote protocol
+function! DoRemote(arg)
+  UpdateRemotePlugins
+endfunction
+
 function! s:LoadPlugins()
-  " Disabled on neovim
-  " @see https://github.com/haya14busa/incsearch.vim/issues/79
-  let s:use_incsearch       = 1 && !has('nvim')
-
-  let s:use_deoplete        = 1 && has('nvim') && has('python3')
-  let s:use_neocomplete     = 1 && has('lua')
-
-  " global, used in plugin/completion.vim
-  let g:dko_use_tern_completion = 1 && executable('npm')
-
-  let s:use_colorv    = 0 && (has('python') || has('python3'))
-
   " Notes on adding plugins:
   " - Absolutely do not use 'for' if the plugin provides an `ftdetect/`
 
@@ -532,11 +534,13 @@ function! s:LoadPlugins()
         \| Plug 'tsukkee/unite-tag'
 
   " unite most-recently-used files menu
-  if executable('redis-server') && executable('npm')
-    Plug 'chemzqm/redismru.vim', { 'do': 'npm install' }
-  else
-    Plug 'Shougo/neomru.vim'
-  endif
+  Plug 'chemzqm/redismru.vim', PlugWhen(
+        \   executable('redis-server') && executable('npm'),
+        \   { 'do': 'npm install' }
+        \ )
+  Plug 'Shougo/neomru.vim', PlugWhen(
+        \   !executable('redis-server') \|\| !executable('npm')
+        \ )
 
   Plug 'nathanaelkane/vim-indent-guides'
 
@@ -574,13 +578,11 @@ function! s:LoadPlugins()
   " Plug: Completion
   " ========================================================================
 
-  if s:use_neocomplete | Plug 'Shougo/neocomplete.vim'
-  elseif s:use_deoplete
-    function! DoRemote(arg)
-      UpdateRemotePlugins
-    endfunction
-    Plug 'Shougo/deoplete.nvim', { 'do': function('DoRemote') }
-  endif
+  Plug 'Shougo/neocomplete.vim', PlugWhen(!has('nvim') && has('lua'))
+  Plug 'Shougo/deoplete.nvim', PlugWhen(
+        \   has('nvim') && has('python3'),
+        \   { 'do': function('DoRemote') }
+        \ )
 
   let g:dko_has_completion =
         \ exists("g:plugs['neocomplete.vim']")
@@ -601,9 +603,7 @@ function! s:LoadPlugins()
           \| Plug 'honza/vim-snippets'
           \| Plug 'Shougo/neosnippet-snippets'
 
-    if has('python3')
-      Plug 'zchee/deoplete-jedi'
-    endif
+    Plug 'zchee/deoplete-jedi', PlugWhen(has('python3'))
   endif
 
   " ========================================================================
@@ -730,9 +730,7 @@ function! s:LoadPlugins()
   "'jiangmiao/simple-javascript-indenter'   " Alternative js indent
   "'jason0x43/vim-js-indent'                " Use HTML's indenter with
                                             " TypeScript support
-  if exists("g:plugs['yajs.vim']")
-    Plug 'gavocanov/vim-js-indent', { 'for': 'javascript' }
-  endif
+  Plug 'gavocanov/vim-js-indent', { 'for': 'javascript' }
 
   " es.next support
   " possible jsx indent conflict?
@@ -765,16 +763,16 @@ function! s:LoadPlugins()
   Plug 'othree/jspc.vim'
 
   if g:dko_has_completion
-    if g:dko_use_tern_completion
-      if has('nvim')
-        Plug 'carlitux/deoplete-ternjs'
-      elseif executable('npm')
-        Plug 'marijnh/tern_for_vim', { 'do': 'npm install' }
-      endif
-    else
-      " Syntax completion
-      Plug '1995eaton/vim-better-javascript-completion'
-    endif
+    Plug 'carlitux/deoplete-ternjs', PlugWhen(
+          \   has('nvim') && executable('npm')
+          \ )
+    Plug 'marijnh/tern_for_vim', PlugWhen(
+          \   !has('nvim') && executable('npm'),
+          \   { 'do': 'npm install' }
+          \ )
+    Plug '1995eaton/vim-better-javascript-completion', PlugWhen(
+          \   !executable('npm')
+          \ )
   endif
 
   " ========================================================================
@@ -788,11 +786,10 @@ function! s:LoadPlugins()
   " Use pandoc for markdown syntax
   Plug 'vim-pandoc/vim-pandoc-syntax'
 
-  if executable('npm')
-    Plug 'suan/vim-instant-markdown', {
-          \   'do': 'npm install -g instant-markdown-d'
-          \ }
-  endif
+  Plug 'suan/vim-instant-markdown', PlugWhen(
+        \   executable('npm'),
+        \   { 'do': 'npm install -g instant-markdown-d' }
+        \ )
 
   " ========================================================================
   " Language: Nginx
@@ -837,20 +834,21 @@ function! s:LoadPlugins()
   "Plug 'dsawardekar/wordpress.vim', { 'for': ['php'] }
 
   " server-based PHP completion disabled
-  if 0 && executable('composer')
-    if has('nvim')
-      Plug 'phpvim/phpcd.vim', {
-            \   'do': 'composer update',
-            \   'for': 'php'
-            \ }
-      Plug 'vim-scripts/progressbar-widget'
-    elseif has('python') || has('python3')
-      Plug 'mkusher/padawan.vim', {
-            \   'do': 'composer global require mkusher/padawan',
-            \   'for': 'php',
-            \ }
-    endif
-  endif
+  Plug 'phpvim/phpcd.vim', PlugWhen(
+        \   has('nvim') && executable('composer'),
+        \   {
+        \     'do': 'composer update',
+        \     'for': 'php',
+        \   }
+        \ )
+        \| Plug 'vim-scripts/progressbar-widget'
+  Plug 'mkusher/padawan.vim', PlugWhen(
+        \   has('nvim') && executable('composer') && has('python3'),
+        \   {
+        \     'do': 'composer global require mkusher/padawan',
+        \     'for': 'php'
+        \   }
+        \ )
 
   " Snippet
   " Errors if no function under cursor,
@@ -895,10 +893,8 @@ function! s:LoadPlugins()
   " ----------------------------------------
 
   " Hex (et al) color highlighting
-  if s:use_colorv | Plug 'Rykka/colorv.vim'
-  else                | Plug 'ap/vim-css-color'
-  "else                | Plug 'chrisbra/Colorizer'
-  endif
+  Plug 'ap/vim-css-color'
+  "Plug 'Rykka/colorv.vim', PlugWhen(0 && (has('python') || has('python3')))
 
   " Omnicompletion
   Plug 'othree/csscomplete.vim'
@@ -918,8 +914,7 @@ function! s:LoadPlugins()
         \| Plug 'sgur/vim-gf-autoload', { 'for': ['vim'] }
 
   " Completion
-  if g:dko_has_completion | Plug 'Shougo/neco-vim', { 'for': ['vim'] }
-  endif
+  Plug 'Shougo/neco-vim', { 'for': ['vim'] }
 
   " ========================================================================
   " Plug: UI -- load last!
@@ -931,9 +926,10 @@ function! s:LoadPlugins()
   " <Plug> to not move on * search function
   Plug 'haya14busa/vim-asterisk'
 
+  " Disabled on neovim
+  " @see https://github.com/haya14busa/incsearch.vim/issues/79
   " highlight partial matches as you type in search mode
-  if s:use_incsearch | Plug 'haya14busa/incsearch.vim'
-  endif
+  Plug 'haya14busa/incsearch.vim', PlugWhen(!has('nvim'))
 
   " show registers in split if use \" or <C-R>
   "Plug 'junegunn/vim-peekaboo'
@@ -954,7 +950,6 @@ endfunction
 
 let s:plug_dir = '/vendor/vim'
 if has('nvim') | let s:plug_dir = '/vendor/nvim' | endif
-let s:dko_plug_absdir = dko#vim_dir . s:plug_dir
 
 " Load vim-plug and its plugins?
 if empty(glob(expand(dko#vim_dir . '/autoload/plug.vim')))
@@ -964,9 +959,9 @@ if empty(glob(expand(dko#vim_dir . '/autoload/plug.vim')))
         \ . 'junegunn/vim-plug/master/plug.vim'
 endif
 
-call plug#begin(s:dko_plug_absdir)
+call plug#begin(dko#vim_dir . s:plug_dir)
   call s:LoadPlugins()
-  if empty(glob(expand(s:dko_plug_absdir))) | PlugInstall
+  if empty(glob(expand(g:plug_home))) | PlugInstall
   endif
 call plug#end()
 
