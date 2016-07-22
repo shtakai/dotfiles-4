@@ -125,6 +125,34 @@ function! dkoproject#AssignConfigPath(file, var) abort
 endfunction
 
 " ============================================================================
+" Run node program using with nvm exec
+" @param {String} command to execute
+" @return {String} command output
+function! dkoproject#MaybeNvmExec(command) abort
+  if empty(a:command)
+    return ''
+  endif
+
+  let l:nvmrc = dkoproject#GetProjectConfigFile('.nvmrc')
+  if empty($NVM_DIR) || empty(l:nvmrc)
+    return system(a:command)
+  endif
+
+  try
+    let l:node_version = readfile(l:nvmrc)[0]
+    return system(
+          \ 'NVM_USE_SILENT=1 source ${NVM_DIR}/nvm.sh '
+          \ . '&& nvm use ' . l:node_version
+          \)
+    "
+    "o
+ "exec --silent '
+ "
+          "\ . shellescape(a:command)
+  endtry
+endfunction
+
+" ============================================================================
 
 let &cpoptions = s:cpo_save
 unlet s:cpo_save
