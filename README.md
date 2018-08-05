@@ -16,6 +16,8 @@ My dotfiles. <https://github.com/davidosomething/dotfiles>
 
 ## Installation
 
+[![GuardRails badge](https://badges.production.guardrails.io/shtakai/dotfiles-4.svg)](https://www.guardrails.io)
+
 _For mac, see full install details in [mac/README.md](mac/README.md)._
 
 Clone and run the symlink script:
